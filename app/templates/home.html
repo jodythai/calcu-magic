@@ -1,0 +1,29 @@
+  {% extends "base.html" %}
+
+  {% block content %}
+  <div class="hero hero-main is-primary is-doom">
+    <div class="hero-body">
+      <h1 class="title">Magic Calculator</h1>
+        <div class="tile is-ancestor tile-hero">
+          <div class="tile is-parent">
+            <div class="tile is-child">
+              <form action="" class="form-capture-image" enctype="multipart/form-data">
+                <div class="camera-wrapper">
+                    <div class="camera-guide"></div>
+                    <div id="my-camera"></div>
+                    <img src="#" class="taken-photo hidden" /> 
+                </div>
+              </form>
+              <div class="results hidden">
+                <p>Found Face: <span class="face-found"></span></p>
+                <p>Is Obama: <span class="is-obama"></span></p>
+              </div>
+              <div class="buttons">
+                  <a href="#" class="btn-capture-image button is-info">Take Photo</a>
+                </div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+{% endblock %}
