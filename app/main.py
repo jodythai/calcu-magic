@@ -1,7 +1,7 @@
 import logging
 import sys
 from blueprints import *
-from flask import Flask, request, jsonify
+from flask import Flask
 
 app = Flask(__name__)
 app.register_blueprint(homepage)

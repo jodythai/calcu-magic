@@ -9,7 +9,10 @@ __pycache__/
 # Distribution / packaging
 .Python
 .vscode/
+backup/
+uploads/
 data/
+data-cleaned/
 build/
 develop-eggs/
 dist/

@@ -61,10 +61,14 @@ $('.btn-capture-image').on('click', function(e) {
       success: function(data) {
         $('#my-camera').removeClass('hidden');
         $('.results').removeClass('hidden')
+        if (data['status'] == 0) { 
+          $('.results').html('<h3>We cannot detect your image, please try again.</h3>')
+        } else {
+          $('.results').html("<img src='data:image/jpeg;base64," + data['image'] + "' alt='' />");
+        }
+        
         $('.taken-photo').attr('src', data_uri).addClass('hidden');
         $('.btn-capture-image').removeClass('is-loading')
-        $('.face-found').text(data['face_found_in_image'])
-        $('.is-obama').text(data['is_picture_of_obama'])
       }
     });
   });

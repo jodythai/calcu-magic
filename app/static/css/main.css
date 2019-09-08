@@ -131,7 +131,7 @@ input[type="text"] {
 }
 
 .camera-guide {
-  background: url('../img/webcam_guide.png') no-repeat;
+  background: url('../img/camera-guide.png') no-repeat;
   position: absolute;
   top: 0;
   left: 0;
