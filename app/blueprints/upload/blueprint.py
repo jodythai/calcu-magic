@@ -22,20 +22,6 @@ FILENAME_TEMPLATE = '{}.jpg'
 PREDICT_IMAGE_WIDTH = 28
 PREDICT_IMAGE_HEIGHT = 28
 
-# def preprocess_image(img_raw):
-#   predict_img_width = PREDICT_IMAGE_WIDTH
-#   predict_img_height = PREDICT_IMAGE_HEIGHT
-
-#   img_str = re.search(b"base64,(.*)", img_raw).group(1)
-#   img_decode = base64.decodebytes(img_str)
-
-#   image = tf.image.decode_jpeg(img_decode, channels=1)
-#   image = tf.image.resize(image, [predict_img_width, predict_img_height])
-#   image = (255 - image) / 255.0  # normalize to [0,1] range
-#   image = tf.reshape(image, (1, predict_img_width, predict_img_height, 1))
-
-#   return image, img_decode
-
 model_loaded = False
 model_digits_svm = None
 model_operators_svm = None
@@ -43,6 +29,13 @@ model_digits_operators = None
 model_digits_cnn = None
 model_operators_cnn = None
 model_digits_ops_cnn = None
+
+operator_dict = {
+  0 : '+',
+  1 : '-',
+  2 : '/',
+  3: '*'
+}
 
 def load_model():
   global model_loaded, model_digits_svm, model_operators_svm, model_digits_operators, model_digits_cnn, model_operators_cnn, model_digits_ops_cnn
@@ -110,7 +103,21 @@ def predict_digits_svm(roi):
 
   return prediction[0]
 
-def calculation(img_name):
+def calculate(equation):
+  total = 0
+  s = ''
+  i = 0
+  while i < len(equation):
+    s +=  str(equation[i])
+    i += 1
+  try:
+    total = round(eval(s), 2)
+  except Exception as e:
+    print(e)
+    total = 0
+  return total, s 
+
+def processing(img_name, mode):
     
   CROPPED_W = 554
   CROPPED_H = 166
@@ -127,17 +134,20 @@ def calculation(img_name):
   if not roi_upload_path.is_dir():
     os.mkdir(roi_upload_path)
 
-  # image ratio w/h
-  im_ratio = round(im.shape[1]/im.shape[0], 2)
-  center_w = im.shape[1]//2
-  center_h = im.shape[0]//2
-  x = center_w-(CROPPED_W//2)
-  y = center_h-(CROPPED_H//2)
+  if mode == 'camera':
+    # image ratio w/h
+    im_ratio = round(im.shape[1]/im.shape[0], 2)
+    center_w = im.shape[1]//2
+    center_h = im.shape[0]//2
+    x = center_w-(CROPPED_W//2)
+    y = center_h-(CROPPED_H//2)
 
-  # crop the image
-  im = im[y:y + CROPPED_H, x:x + CROPPED_W]
-
-  cv2.imwrite(os.path.join(img_upload_path, "cropped_img.jpg"), im)
+    # crop the image
+    im = im[y:y + CROPPED_H, x:x + CROPPED_W]
+    cv2.imwrite(os.path.join(img_upload_path, "cropped_img.jpg"), im)
+  
+  if mode == 'canvas':
+    im = 255 - im
 
   # image preprocessing
   # brightness = float(50)
@@ -157,95 +167,73 @@ def calculation(img_name):
   cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
   cnts = imutils.grab_contours(cnts)
 
-  orig = im.copy()
-
   # sort the contours
   (cnts, boundingBoxes) = contours.sort_contours(cnts, method="left-to-right")
-  list_roi = []
-  roi_h_sum = 0
+  # list_roi = []
+  roi_operator_h_sum = 0
 
   im2 = im.copy()
-  rows, cols = im2.shape[:2]
+  roi_operators = []
+  roi_numbers = []
+  equation = []
 
-  print(roi_upload_path, file=sys.stdout)
-
+  c_prev = ''
   # FIND ROI, loop over the contours
   for (i, c) in enumerate(cnts):
     # compute the bounding box of the contour, then use the
     # bounding box coordinates to derive the aspect ratio
     (x, y, w, h) = cv2.boundingRect(c)
+    if i > 0:
+      (x_prev, y_prev, w_prev, h_prev) = cv2.boundingRect(c_prev)
     
-    if h > 10 and w > 10:
+    if h > 5 and w > 10:
       cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
-      roi = thresh[y:y+h, x:x+w]
-      # add roi into a list and calculate sum
-      list_roi.append([roi, c])
-      roi_h_sum += h
+      roi = thresh[y-5:y+h+5, x-5:x+w+5]
+
       # write roi images to folder
-      cv2.imwrite(os.path.join(pathlib.PurePath(roi_upload_path), "roi_" + str(i) + ".jpg"), roi)
+      cv2.imwrite(os.path.join(pathlib.PurePath(roi_upload_path), "roi_" + str(i) + ".jpg"), roi) 
 
-  roi_avg_h = roi_h_sum / len(list_roi)
+      roi = deskew(roi, 28)
+      roi = center_extent(roi, (28,28))
+      cv2.imwrite(os.path.join(pathlib.PurePath(roi_upload_path), "roi_deskew_" + str(i) + ".jpg"), roi)
 
-  # list_operators = {}
-  roi_operators = []
-  roi_numbers = []
-
-  # save roi to files
-  for (i, roi) in enumerate(list_roi):
-    roi = roi[0]
-    # print(roi.shape)
-    if roi.shape[0] < roi_avg_h:
-      # list_operators['index'] = i
-      # list_operators['roi'] = roi
-      roi_operators.append(roi)
-      cv2.imwrite(os.path.join(pathlib.PurePath(roi_upload_path), "operator_" + str(i) + ".jpg"), roi)
-    else:
-      roi_numbers.append(roi)
+      if i % 2 == 1: #operator
+        roi_operators.append([roi, c])
+        roi_operator_h_sum += h
+        if i > 0 and h >= h_prev:
+          operator = '/'
+        else:
+          operator = operator_dict.get(predict_operator_svm(roi))
+        equation.append(operator) 
+        cv2.putText(im2, str(operator), (x+int(w/2), y),cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
+        cv2.imwrite(os.path.join(pathlib.PurePath(roi_upload_path), "operator_" + str(i) + ".jpg"), roi)
+      else: #digit
+        roi_numbers.append([roi, c])
+        digit = np.argmax(model_digits_cnn.predict(np.expand_dims(roi, axis=0)), axis=1)[0]
+        equation.append(digit)
+        cv2.putText(im2, str(digit), (x+w, y+int(h/2)),cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
+      c_prev = c
+      # add roi into a list and calculate sum
+      # list_roi.append([roi, c])
+      # roi_h_sum += h
   
-  print(len(roi_operators), file=sys.stdout)
+  # roi_operator_h_avg = roi_operator_h_sum / len(list_roi)
+  # for roi, cnts in roi_operators:
+    
+  print(equation)    
 
-  # 0 - add, 1 - subtract, 2 - divide, 3 - multiply
-  operator = -1
-  for roi in roi_operators:
-    roi = deskew(roi, 28)
-    roi = center_extent(roi, (28,28))
-    operator = predict_operator_svm(roi)
-    # roi_predict = np.reshape(roi, (roi.shape[0], roi.shape[1], 1))
-    # prediction_cnn = model_operators_cnn.predict(np.expand_dims(roi_predict, axis=0))
-    # operator = np.argmax(prediction_cnn, axis=1)
-  
-  print('predict operator: ' + str(operator), file=sys.stdout)
-
-  total = 0
-  for i, roi in enumerate(roi_numbers):
-    roi = deskew(roi, 28)
-    roi = center_extent(roi, (28,28))
-    # roi_predict = np.reshape(roi, (roi.shape[0], roi.shape[1], 1))
-    prediction_cnn = model_digits_cnn.predict(np.expand_dims(roi, axis=0))
-    digit = np.argmax(prediction_cnn, axis=1)
-    print('predict digit:' + str(digit), file=sys.stdout)
-
-    if i == 0:
-      total = digit
-    else:
-      if operator == 0: # add
-        total += digit
-      elif operator == 1: # subtract
-        total -= digit
-      elif operator == 3: # multiply
-        total *= digit
-  
-  print("total: " + str(total), file=sys.stdout)
+  total, eval_string = calculate(equation)
 
   results = {}
-  if operator != -1 or len(roi_numbers) < 2:
+  if len(roi_operators) > 0 and len(roi_numbers) >= 2:
     results['status'] = 1
     # write result to image
-    (x, y, w, h) = cv2.boundingRect(list_roi[-1][1])
-    cv2.putText(im2, str(int(total)), (x+w+20, y+h),cv2.FONT_HERSHEY_DUPLEX, 2, (0, 0, 255), 2)
+    (x, y, w, h) = cv2.boundingRect(roi_numbers[0][1])
+    cv2.putText(im2, eval_string + '=' + str(total), (x, int(im.shape[0]*3/4)),cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
 
     im_name = img_name.split('.')[0]
     results['calculated_img'] = os.path.join(img_upload_path, im_name + "_calculated.jpg")
+    results['equation'] = eval_string + '=' + str(total)
     cv2.imwrite(results['calculated_img'], im2)
   else:
     results['status'] = 0 # error
@@ -277,7 +265,7 @@ def handle_upload():
 
     print(filename, file=sys.stdout)
 
-    results = calculation(filename)
+    results = processing(filename, data['mode'])
 
     if results['status'] == 1:
       with open(results['calculated_img'], "rb") as image_file:

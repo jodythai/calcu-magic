@@ -1,17 +1,21 @@
 html {
   height: 100vh;
+  background: #000;
 }
 body {
   height: 100vh;
   min-height: 100vh;
+  padding: 1em;
 }
 
 h1, h2, h3, h4, h5, h6, .title  {
+  color: #fff;
   font-family: 'Orbitron', cursive;
   line-height: 2;
 }
 
 h1.title {
+  color: #fff;
   font-size: 2.5em;
   font-weight: bold;    
   margin: 0;
@@ -124,6 +128,25 @@ input[type="text"] {
   position: relative;
 }
 
+.tabs {
+  width: 20%;
+  margin: 0 auto;
+}
+
+.tabs .button {
+  margin: 0 10px;
+}
+
+.tabs .button.is-outlined {
+  background: transparent;
+  border-color: #fff;
+  color: #fff;
+}
+
+.tab-content {
+  text-align: center;
+}
+
 .camera-wrapper {
   margin: 0 auto;
   display: flex;
@@ -141,14 +164,21 @@ input[type="text"] {
   margin: 0 auto;
 }
 
-.buttons {
+.tab-content-buttons {
   text-align: center;
   flex-grow: 1;
+  width: 20%;
+  margin: 0 auto;
   padding: 20px 0 0 0;
 }
 
-.button {
-  margin: 0 auto;
+.tab-content-buttons .button {
+  margin: 0 auto !important;
+}
+
+#canvas {
+  /* background: white; */
+  border: 5px solid white;
 }
 
 .taken-photo {
