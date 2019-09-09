@@ -1,6 +1,6 @@
 import re
 import os
-import time
+from time import localtime, strftime
 import sys
 import base64
 import numpy as np
@@ -11,8 +11,7 @@ import mahotas
 from sklearn.externals import joblib
 from skimage.feature import hog
 import imutils
-from imutils import contours
-from imutils import adjust_brightness_contrast
+from imutils import adjust_brightness_contrast, contours
 import tensorflow as tf
 from flask import Blueprint, Flask, request, redirect, jsonify, current_app
 
@@ -126,7 +125,8 @@ def processing(img_name, mode):
   im = cv2.imread(os.path.join(current_app.config['UPLOAD_FOLDER'], img_name))
 
   # create a folder to upload roi
-  img_upload_path = pathlib.Path(os.path.join(current_app.config['UPLOAD_FOLDER'], img_name.rsplit('.')[0]))
+  img_folder_name = img_name.rsplit('.')[0] + "_" + strftime("%Y_%m_%d-%H_%M_%S", localtime())
+  img_upload_path = pathlib.Path(os.path.join(current_app.config['UPLOAD_FOLDER'], img_folder_name))
   if not img_upload_path.is_dir():
     os.mkdir(img_upload_path)
   
