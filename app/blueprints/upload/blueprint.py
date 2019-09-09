@@ -200,6 +200,7 @@ def processing(img_name, mode):
       if i % 2 == 1: #operator
         roi_operators.append([roi, c])
         roi_operator_h_sum += h
+        # calculate the height of current contour with the previous one to find the divider operator
         if i > 0 and h >= h_prev:
           operator = '/'
         else:
@@ -212,13 +213,9 @@ def processing(img_name, mode):
         digit = np.argmax(model_digits_cnn.predict(np.expand_dims(roi, axis=0)), axis=1)[0]
         equation.append(digit)
         cv2.putText(im2, str(digit), (x+w, y+int(h/2)),cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
+      
+      # keep the previous contours to find the divider operator 
       c_prev = c
-      # add roi into a list and calculate sum
-      # list_roi.append([roi, c])
-      # roi_h_sum += h
-  
-  # roi_operator_h_avg = roi_operator_h_sum / len(list_roi)
-  # for roi, cnts in roi_operators:
     
   print(equation)    
 
